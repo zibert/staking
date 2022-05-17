@@ -1,0 +1,7 @@
+{
+    "uniswapV2Router02address" : "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+    "pairAddress" : "0xE2F08ABea3d89C4A39E9753c97A6299c6865D021",
+    "zcoinAddress" : "0x5209023930B9C6A06Ce65707DFaCba146c60b8d5",
+    "uniswapV2Factory" : "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
+    "stackingAddress" : "0x76ce4B51E8dAb5Af59c521452ECb0d76a3E014B0"
+}
