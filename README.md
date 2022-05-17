@@ -36,7 +36,7 @@ npx hardhat getPairAddress --network rinkeby
 
 npx hardhat createPair --network rinkeby 
 
-## createPair example: 
+## addLiquidityETH example: 
 
 npx hardhat addLiquidityETH --network rinkeby --ether 0.2 --zcoins 2.2
 
@@ -53,7 +53,7 @@ npx hardhat stake --network rinkeby --amount 0.2
 npx hardhat claim --network rinkeby
 
 
-## stake example: 
+## unstake example: 
 
 npx hardhat unstake --network rinkeby
 
