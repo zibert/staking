@@ -29,7 +29,7 @@ describe('Stacking Timing Test', () => {
   const t1 = ethers.utils.parseEther("1.0");
   const t2 = ethers.utils.parseEther("2.0");
   const t3 = ethers.utils.parseEther("3.0");
-  const t4 = ethers.utils.parseEther("5.0");
+  const t4 = ethers.utils.parseEther("4.0");
   const t5 = ethers.utils.parseEther("5.0");
   const t6 = ethers.utils.parseEther("6.0");
   const t7 = ethers.utils.parseEther("7.0");
@@ -57,58 +57,54 @@ describe('Stacking Timing Test', () => {
     lptoken = (await deployContract(signers[0], ZcoinArtifacts)) as Zcoin
     stacking = (await deployContract(signers[0], StackingArtifacts, [zcoin.address, lptoken.address])) as Stacking
 
-    await zcoin.mint(stacking.address, t100);
+    await zcoin.mint(stacking.address, t10);
 
     await lptoken.mint(owner.address, t10);
     await lptoken.approve(stacking.address, t10);
   })
 
-  it('claim serial timing ', async () => {
+  it('reward request serial timing', async () => {
     await stacking.stake(t1)
+    await expect(stacking.claim(options)).to.be.revertedWith("nothing to reward");
 
-    expect((await zcoin.balanceOf(stacking.address))).to.eq(t100)
+    expect((await zcoin.balanceOf(stacking.address))).to.eq(t10)
     expect((await zcoin.balanceOf(owner.address))).to.eq(0)
 
     await network.provider.send("evm_increaseTime", [5 * 60]) // + 5 min
     await network.provider.send("evm_mine")
 
-    await stacking.claim(options)
-
-    expect((await zcoin.balanceOf(stacking.address))).to.eq(t100)
-    expect((await zcoin.balanceOf(owner.address))).to.eq(0)
+    await expect(stacking.claim(options)).to.be.revertedWith("nothing to reward");
 
     await stacking.stake(t1)
 
-    expect((await zcoin.balanceOf(stacking.address))).to.eq(t100)
-    expect((await zcoin.balanceOf(owner.address))).to.eq(0)
+    await expect(stacking.claim(options)).to.be.revertedWith("nothing to reward");
 
     await network.provider.send("evm_increaseTime", [5 * 60 + 1]) // + 5 min
     await network.provider.send("evm_mine")
 
     await stacking.claim(options)
+    await expect(stacking.claim(options)).to.be.revertedWith("nothing to reward");
 
-    expect((await zcoin.balanceOf(stacking.address))).to.eq(t100.sub(reward))
+    expect((await zcoin.balanceOf(stacking.address))).to.eq(t10.sub(reward))
     expect((await zcoin.balanceOf(owner.address))).to.eq(reward)
 
     await network.provider.send("evm_increaseTime", [60 * 5 + 1]) // + 5 min
     await network.provider.send("evm_mine")
 
     await stacking.claim(options)
+    await expect(stacking.claim(options)).to.be.revertedWith("nothing to reward");
 
-    expect((await zcoin.balanceOf(stacking.address))).to.eq(t100.sub(reward).sub(reward))
+    expect((await zcoin.balanceOf(stacking.address))).to.eq(t10.sub(reward).sub(reward))
     expect((await zcoin.balanceOf(owner.address))).to.eq(reward.add(reward))
 
-    await stacking.claim(options)
-
-    expect((await zcoin.balanceOf(stacking.address))).to.eq(t100.sub(reward).sub(reward))
-    expect((await zcoin.balanceOf(owner.address))).to.eq(reward.add(reward))
+    await expect(stacking.claim(options)).to.be.revertedWith("nothing to reward");
   })
 
-  it('claim long interval', async () => {
+  it('reward request long interval', async () => {
     await stacking.stake(t1)
     await stacking.stake(t1)
 
-    expect((await zcoin.balanceOf(stacking.address))).to.eq(t100)
+    expect((await zcoin.balanceOf(stacking.address))).to.eq(t10)
     expect((await zcoin.balanceOf(owner.address))).to.eq(0)
 
     await network.provider.send("evm_increaseTime", [25 * 60]) // + 25 min
@@ -116,12 +112,11 @@ describe('Stacking Timing Test', () => {
 
     await stacking.claim(options)
 
-    expect((await zcoin.balanceOf(stacking.address))).to.eq(t100.sub(reward).sub(reward))
+    expect((await zcoin.balanceOf(stacking.address))).to.eq(t10.sub(reward).sub(reward))
     expect((await zcoin.balanceOf(owner.address))).to.eq(reward.add(reward))
   })
 
-
-  it('unstake serial timing', async () => {
+  it('unstake request serial timing', async () => {
     expect((await lptoken.balanceOf(owner.address))).to.eq(t10)
     expect((await lptoken.balanceOf(stacking.address))).to.eq(0)
 
@@ -130,7 +125,7 @@ describe('Stacking Timing Test', () => {
     expect((await lptoken.balanceOf(owner.address))).to.eq(t9) // 10 - 1
     expect((await lptoken.balanceOf(stacking.address))).to.eq(t1) // 0 + 1
 
-    await stacking.unstake()
+    await expect(stacking.unstake(options)).to.be.revertedWith("nothing to unstake");
 
     expect((await lptoken.balanceOf(owner.address))).to.eq(t9)
     expect((await lptoken.balanceOf(stacking.address))).to.eq(t1)
@@ -143,7 +138,7 @@ describe('Stacking Timing Test', () => {
     expect((await lptoken.balanceOf(owner.address))).to.eq(t8)
     expect((await lptoken.balanceOf(stacking.address))).to.eq(t2)
 
-    await stacking.unstake()
+    await expect(stacking.unstake(options)).to.be.revertedWith("nothing to unstake");
 
     expect((await lptoken.balanceOf(owner.address))).to.eq(t8)
     expect((await lptoken.balanceOf(stacking.address))).to.eq(t2)
@@ -156,7 +151,7 @@ describe('Stacking Timing Test', () => {
     expect((await lptoken.balanceOf(owner.address))).to.eq(t9)
     expect((await lptoken.balanceOf(stacking.address))).to.eq(t1)
 
-    await network.provider.send("evm_increaseTime", [1 * 60 + 1]) // + 1 min (total +21 min)
+    await network.provider.send("evm_increaseTime", [2 * 60 + 1]) // + 1 min (total +21 min)
     await network.provider.send("evm_mine")
 
     await stacking.unstake()
@@ -165,7 +160,7 @@ describe('Stacking Timing Test', () => {
     expect((await lptoken.balanceOf(stacking.address))).to.eq(0)
   })
 
-  it('unstake long interval', async () => {
+  it('unstake request long interval', async () => {
     expect((await lptoken.balanceOf(owner.address))).to.eq(t10)
     expect((await lptoken.balanceOf(stacking.address))).to.eq(0)
 
@@ -183,10 +178,75 @@ describe('Stacking Timing Test', () => {
     expect((await lptoken.balanceOf(owner.address))).to.eq(t10)
     expect((await lptoken.balanceOf(stacking.address))).to.eq(0)
 
-    await stacking.unstake()
+    await expect(stacking.unstake(options)).to.be.revertedWith("nothing to unstake");
 
     expect((await lptoken.balanceOf(owner.address))).to.eq(t10)
     expect((await lptoken.balanceOf(stacking.address))).to.eq(0)
+  })
+
+  it('reward request with different timeToReward', async () => {
+    await stacking.changeRewardPercentage(50);
+    await stacking.stake(t2);
+    await stacking.changetimeToReward(2 * 60);
+    await stacking.stake(t6);
+
+    expect((await zcoin.balanceOf(stacking.address))).to.eq(t10)
+    expect((await zcoin.balanceOf(owner.address))).to.eq(0)
+
+    await network.provider.send("evm_increaseTime", [2 * 60 + 1]) // + 2 min
+    await network.provider.send("evm_mine")
+
+    await stacking.claim(options)
+
+    expect((await zcoin.balanceOf(stacking.address))).to.eq(t7)
+    expect((await zcoin.balanceOf(owner.address))).to.eq(t3)
+
+    await network.provider.send("evm_increaseTime", [7 * 60 + 1]) // + 7 min
+    await network.provider.send("evm_mine")
+
+    expect((await zcoin.balanceOf(stacking.address))).to.eq(t7)
+    expect((await zcoin.balanceOf(owner.address))).to.eq(t3)
+
+    await network.provider.send("evm_increaseTime", [1 * 60 + 1]) // + 1 min
+    await network.provider.send("evm_mine")
+
+    await stacking.claim(options)
+
+    expect((await zcoin.balanceOf(stacking.address))).to.eq(t6)
+    expect((await zcoin.balanceOf(owner.address))).to.eq(t4)
+  })
+
+  it('unstake request with different timeToUnstake', async () => {
+    await stacking.stake(t2);
+
+    expect((await lptoken.balanceOf(owner.address))).to.eq(t8)
+    expect((await lptoken.balanceOf(stacking.address))).to.eq(t2)
+
+    await stacking.changetimeToUnstake(2 * 60);
+    await stacking.stake(t5);
+
+    expect((await lptoken.balanceOf(owner.address))).to.eq(t3)
+    expect((await lptoken.balanceOf(stacking.address))).to.eq(t7)
+
+    await network.provider.send("evm_increaseTime", [2 * 60 + 1]) // + 2 min
+    await network.provider.send("evm_mine")
+
+    await stacking.unstake(options)
+
+    expect((await lptoken.balanceOf(owner.address))).to.eq(t8)
+    expect((await lptoken.balanceOf(stacking.address))).to.eq(t2)
+
+    await expect(stacking.unstake(options)).to.be.revertedWith("nothing to unstake");
+
+    await network.provider.send("evm_increaseTime", [18 * 60 + 1]) // + 18 min
+    await network.provider.send("evm_mine")
+
+    await stacking.unstake(options)
+
+    expect((await lptoken.balanceOf(owner.address))).to.eq(t10)
+    expect((await lptoken.balanceOf(stacking.address))).to.eq(0)
+
+    await expect(stacking.unstake(options)).to.be.revertedWith("nothing to unstake");
   })
 
 })

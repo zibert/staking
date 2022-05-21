@@ -22,9 +22,9 @@ npx hardhat run --network rinkeby scripts/deploy.ts<br />
 
 ## rinkeby
 
-npx hardhat verify --network rinkeby 0x76ce4b51e8dab5af59c521452ecb0d76a3e014b0<br />
+npx hardhat verify --network rinkeby --constructor-args arguments.js 0x731Fb7604e57Dc6f82D5fc7105195365411Ce6e4<br />
 
-https://rinkeby.etherscan.io/address/0x76ce4b51e8dab5af59c521452ecb0d76a3e014b0#code
+https://rinkeby.etherscan.io/address/0x731Fb7604e57Dc6f82D5fc7105195365411Ce6e4#code
 
 # Tasks 
 

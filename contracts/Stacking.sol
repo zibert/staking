@@ -25,6 +25,10 @@ contract Stacking {
 
     struct UserStakings {
         uint256 count;
+        uint256 nextToReward;
+        uint256 nextToUnstake;
+        mapping (uint256 => uint256) reordersForClaim;
+        mapping (uint256 => uint256) reordersForUnstake;
         mapping (uint256 => Staking) stakings;
     }
 
@@ -42,9 +46,40 @@ contract Stacking {
         lpToken.transferFrom(msg.sender, address(this), _amount);
         uint256 count = userStakings[msg.sender].count;
         userStakings[msg.sender].stakings[count].balance = _amount;
-        userStakings[msg.sender].stakings[count].reward = _amount * rewardPercentage / 100;
+        userStakings[msg.sender].stakings[count].reward = _amount / 100 * rewardPercentage;
         userStakings[msg.sender].stakings[count].rewardAfter = block.timestamp + timeToReward;
         userStakings[msg.sender].stakings[count].unstakeAfter = block.timestamp + timeToUnstake;
+
+        bool isStackingsReordered;
+         for (uint256 i = userStakings[msg.sender].nextToReward; i < count; i++) {
+            if (userStakings[msg.sender].stakings[count].rewardAfter <= userStakings[msg.sender].stakings[i].rewardAfter) {
+                for (uint256 k = count; k > i; k--) {
+                    userStakings[msg.sender].reordersForClaim[k] = userStakings[msg.sender].reordersForClaim[k - 1];
+                }
+                userStakings[msg.sender].reordersForClaim[i] = count;
+                isStackingsReordered = true;
+                break;
+            }
+        }
+        if (!isStackingsReordered) {
+            userStakings[msg.sender].reordersForClaim[count] = count;
+        }
+
+        isStackingsReordered = false;
+        for (uint256 i = userStakings[msg.sender].nextToUnstake; i < count; i++) {
+            if (userStakings[msg.sender].stakings[count].unstakeAfter <= userStakings[msg.sender].stakings[i].unstakeAfter) {
+                for (uint256 k = count; k > i; k--) {
+                    userStakings[msg.sender].reordersForUnstake[k] = userStakings[msg.sender].reordersForUnstake[k - 1];
+                }
+                userStakings[msg.sender].reordersForUnstake[i] = count;
+                isStackingsReordered = true;
+                break;
+            }
+        }
+        if (!isStackingsReordered) {
+            userStakings[msg.sender].reordersForUnstake[count] = count;
+        }
+
         userStakings[msg.sender].count++;
         emit Stack(msg.sender, _amount);
     }
@@ -52,30 +87,52 @@ contract Stacking {
     function claim() external {
         uint256 count = userStakings[msg.sender].count;
         uint256 totalReward;
-        for (uint i = 0; i < count; i++) {
-            if (userStakings[msg.sender].stakings[i].reward > 0) {
-                if (userStakings[msg.sender].stakings[i].rewardAfter < block.timestamp ) {
-                    erc20Token.transfer(msg.sender, userStakings[msg.sender].stakings[i].reward);
-                    totalReward += userStakings[msg.sender].stakings[i].reward;
-                    userStakings[msg.sender].stakings[i].reward = 0;
-                }
+        uint256 nextToReward = userStakings[msg.sender].nextToReward;
+        uint256 stackingId = userStakings[msg.sender].reordersForClaim[nextToReward];
+        if (userStakings[msg.sender].stakings[stackingId].rewardAfter > block.timestamp) {
+            revert("nothing to reward");
+        }
+        if (userStakings[msg.sender].stakings[stackingId].reward == 0) {
+            revert("nothing to reward");
+        }
+        for (uint256 i = nextToReward; i <= count; i++) {
+            stackingId = userStakings[msg.sender].reordersForClaim[i];
+            if (userStakings[msg.sender].stakings[stackingId].rewardAfter < block.timestamp ) {
+                erc20Token.transfer(msg.sender, userStakings[msg.sender].stakings[stackingId].reward);
+                totalReward += userStakings[msg.sender].stakings[stackingId].reward;
+                userStakings[msg.sender].stakings[stackingId].reward = 0;
+                userStakings[msg.sender].nextToReward++;
+            } else {
+                break;
             }
         }
+
         emit Claim(msg.sender, totalReward);
     }
 
     function unstake() external {
         uint256 count = userStakings[msg.sender].count;
         uint256 totalAmount;
-        for (uint i = 0; i < count; i++) {
-            if (userStakings[msg.sender].stakings[i].balance > 0) {
-                if (userStakings[msg.sender].stakings[i].unstakeAfter < block.timestamp ) {
-                    lpToken.transfer(msg.sender, userStakings[msg.sender].stakings[i].balance);
-                    totalAmount += userStakings[msg.sender].stakings[i].balance;
-                    userStakings[msg.sender].stakings[i].balance = 0;
-                }
+        uint256 nextToUnstake = userStakings[msg.sender].nextToUnstake;
+        uint256 stackingId = userStakings[msg.sender].reordersForUnstake[nextToUnstake];
+        if (userStakings[msg.sender].stakings[stackingId].unstakeAfter > block.timestamp) {
+            revert("nothing to unstake");
+        }
+        if (userStakings[msg.sender].stakings[stackingId].balance == 0) {
+            revert("nothing to unstake");
+        }
+        for (uint256 i = nextToUnstake; i <= count; i++) {
+            stackingId = userStakings[msg.sender].reordersForUnstake[i];
+            if (userStakings[msg.sender].stakings[stackingId].unstakeAfter < block.timestamp ) {
+                lpToken.transfer(msg.sender, userStakings[msg.sender].stakings[stackingId].balance);
+                totalAmount += userStakings[msg.sender].stakings[stackingId].balance;
+                userStakings[msg.sender].stakings[stackingId].balance = 0;
+                userStakings[msg.sender].nextToUnstake++;
+            } else {
+                break;
             }
         }
+
         emit Unstake(msg.sender, totalAmount);
     }
 
